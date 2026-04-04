@@ -73,10 +73,10 @@ function parseArgs(args) {
 }
 
 function printHelp() {
-  console.log(`Static Code Analyzer
+  console.log(`Codeflow Analyzer
 
 Usage:
-  static-code-analyzer <path-to-project-or-zip> [--output <directory>]
+  codeflow-analyzer <path-to-project-or-zip> [--output <directory>]
 
 Options:
   -o, --output <directory>   Write output files to a custom directory
@@ -84,9 +84,9 @@ Options:
   -v, --version              Show version
 
 Examples:
-  static-code-analyzer ./demo-app
-  static-code-analyzer ./demo-app --output ./reports
-  npx static-code-analyzer ./demo-app
+  codeflow-analyzer ./demo-app
+  codeflow-analyzer ./demo-app --output ./reports
+  npx codeflow-analyzer ./demo-app
 `);
 }
 

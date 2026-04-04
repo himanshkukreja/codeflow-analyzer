@@ -1,6 +1,6 @@
-# Static Code Analyzer
+# Codeflow Analyzer
 
-`static-code-analyzer` is a Node.js CLI that statically analyzes a React or Next.js codebase and generates behavior reports without running the app.
+`codeflow-analyzer` is a Node.js CLI that statically analyzes a React or Next.js codebase and generates behavior reports without running the app.
 
 It extracts:
 - routes
@@ -24,13 +24,13 @@ The tool is designed for frontend teams who want a fast structural understanding
 Global install:
 
 ```bash
-npm install -g static-code-analyzer
+npm install -g codeflow-analyzer
 ```
 
 Run with `npx`:
 
 ```bash
-npx static-code-analyzer /path/to/project
+npx codeflow-analyzer /path/to/project
 ```
 
 Run from source:
@@ -45,21 +45,21 @@ npm run analyze -- /path/to/project
 Basic usage:
 
 ```bash
-static-code-analyzer <path-to-project-or-zip>
+codeflow-analyzer <path-to-project-or-zip>
 ```
 
 Write outputs to a custom directory:
 
 ```bash
-static-code-analyzer <path-to-project-or-zip> --output ./reports
+codeflow-analyzer <path-to-project-or-zip> --output ./reports
 ```
 
 Examples:
 
 ```bash
-static-code-analyzer ./demo-app
-static-code-analyzer ./demo-app --output ./analysis-output
-npx static-code-analyzer ./demo-app
+codeflow-analyzer ./demo-app
+codeflow-analyzer ./demo-app --output ./analysis-output
+npx codeflow-analyzer ./demo-app
 ```
 
 ## Output Files
@@ -76,7 +76,7 @@ If you pass `--output`, they are written to that directory instead.
 Example:
 
 ```bash
-static-code-analyzer ./demo-app
+codeflow-analyzer ./demo-app
 ```
 
 If you run that inside `/Users/himanshukukreja/tools`, the output will be:

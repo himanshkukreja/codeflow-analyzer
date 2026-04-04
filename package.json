@@ -1,10 +1,10 @@
 {
-  "name": "static-code-analyzer",
+  "name": "codeflow-analyzer",
   "version": "1.0.0",
   "description": "Production-grade CLI for extracting behaviors, routes, data flows, and interaction paths from React and Next.js codebases",
   "main": "src/cli.js",
   "bin": {
-    "static-code-analyzer": "./bin/static-code-analyzer.js"
+    "codeflow-analyzer": "./bin/codeflow-analyzer.js"
   },
   "files": [
     "bin",
@@ -16,9 +16,9 @@
     "node": ">=18"
   },
   "scripts": {
-    "analyze": "node ./bin/static-code-analyzer.js",
-    "start": "node ./bin/static-code-analyzer.js",
-    "cli:help": "node ./bin/static-code-analyzer.js --help"
+    "analyze": "node ./bin/codeflow-analyzer.js",
+    "start": "node ./bin/codeflow-analyzer.js",
+    "cli:help": "node ./bin/codeflow-analyzer.js --help"
   },
   "keywords": [
     "cli",
