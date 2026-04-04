@@ -1,0 +1,43 @@
+{
+  "name": "static-code-analyzer",
+  "version": "1.0.0",
+  "description": "Production-grade CLI for extracting behaviors, routes, data flows, and interaction paths from React and Next.js codebases",
+  "main": "src/cli.js",
+  "bin": {
+    "static-code-analyzer": "./bin/static-code-analyzer.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "package.json"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "analyze": "node ./bin/static-code-analyzer.js",
+    "start": "node ./bin/static-code-analyzer.js",
+    "cli:help": "node ./bin/static-code-analyzer.js --help"
+  },
+  "keywords": [
+    "cli",
+    "react",
+    "nextjs",
+    "static-analysis",
+    "ast",
+    "behavior-analysis",
+    "flow-analysis",
+    "ts-morph",
+    "ast-grep"
+  ],
+  "author": "Himanshu Kukreja",
+  "license": "ISC",
+  "dependencies": {
+    "@ast-grep/napi": "^0.42.0",
+    "adm-zip": "^0.5.17",
+    "graphlib": "^2.1.8",
+    "ts-morph": "^27.0.2",
+    "typescript": "^6.0.2"
+  }
+}
