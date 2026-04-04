@@ -2,15 +2,14 @@
 
 `codeflow-analyzer` is a Node.js CLI that statically analyzes a React or Next.js codebase and generates behavior reports without running the app.
 
-It extracts:
+It extracts raw analysis signals such as:
 - routes
 - user-triggered events
 - state updates
 - API calls
 - navigation
 - conditional rendering
-- data-flow relationships
-- possible interaction flows
+- then turns those signals into behaviors, data flows, and interaction flows
 
 The tool is designed for frontend teams who want a fast structural understanding of a codebase:
 
@@ -18,6 +17,22 @@ The tool is designed for frontend teams who want a fast structural understanding
 - What happens after each action?
 - Which routes, APIs, and states are involved?
 - Which flows are possible from the code alone?
+
+## Terminology
+
+The tool uses a few terms in a very specific way:
+
+- `signal`
+  - a raw statically extracted fact from the codebase, such as a route, event, state, API call, navigation action, or conditional
+
+- `flow`
+  - a connected path through extracted signals, usually starting from an event and continuing through state changes, API calls, navigation, or conditional UI
+
+- `behavior`
+  - a human-readable summary of a likely user action, built from one or more signals and flows
+
+- `feature group`
+  - the feature-area bucket used to organize behaviors in reports, such as `Authentication`, `Sessions`, `Applications`, or `Settings`
 
 ## Install
 
@@ -108,7 +123,7 @@ It currently contains:
   - unique detected API endpoints
 
 - `Feature Behaviors`
-  - grouped behavior summaries by feature area such as Login, Users, Settings, Dashboard
+  - grouped behavior summaries by feature group such as Authentication, Users, Settings, Sessions, Applications
   - each behavior includes:
     - trigger
     - internal steps
@@ -117,10 +132,10 @@ It currently contains:
     - confidence
 
 - `Flow Highlights`
-  - possible interaction paths inferred from events, state, API calls, navigation, and conditions
+  - interaction flows inferred by connecting signals such as events, state changes, API calls, navigation, and conditions
 
 - `Data Flows`
-  - simplified state and event flow summaries such as:
+  - simplified data-movement summaries built from signals such as:
     - input -> state -> derived UI
     - button click -> API -> state update -> navigation
 
@@ -148,16 +163,17 @@ Useful sections:
   - quick counts
   - route overview
   - API surface
-  - grouped feature summaries
+  - grouped feature-group summaries
 
 - `behaviors`
   - the main “what can the user do?” list
+  - each item is a synthesized user-facing behavior, not just a raw event
 
 - `dataFlows`
-  - good for understanding how information moves through the UI
+  - good for understanding how data moves through the UI
 
 - `flows`
-  - good for understanding interaction sequences and possible paths
+  - good for understanding interaction sequences built from connected signals
 
 ## What The Tool Detects
 
@@ -191,8 +207,8 @@ The CLI uses a two-stage analysis pipeline:
 Then it uses:
 
 - `graphlib`
-  - to construct a behavior graph
-  - to enumerate possible flows from the extracted signals
+  - to construct a graph from extracted signals
+  - to enumerate interaction flows from those connected signals
 
 ## Limitations
 

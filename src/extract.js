@@ -133,8 +133,9 @@ function buildFunctionRegistry(context) {
     for (const declaration of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
       const initializer = declaration.getInitializer();
       if (!initializer) continue;
-      if (Node.isArrowFunction(initializer) || Node.isFunctionExpression(initializer)) {
-        entries.set(declaration.getName(), initializer);
+      const functionNode = unwrapFunctionInitializer(initializer);
+      if (functionNode) {
+        entries.set(declaration.getName(), functionNode);
       }
     }
 
@@ -142,6 +143,21 @@ function buildFunctionRegistry(context) {
   }
 
   return registry;
+}
+
+function unwrapFunctionInitializer(initializer) {
+  if (!initializer) return null;
+  if (Node.isArrowFunction(initializer) || Node.isFunctionExpression(initializer)) return initializer;
+  if (Node.isCallExpression(initializer)) {
+    const callee = initializer.getExpression().getText();
+    if (["useCallback", "React.useCallback", "useMemo", "React.useMemo"].includes(callee)) {
+      const [firstArg] = initializer.getArguments();
+      if (firstArg && (Node.isArrowFunction(firstArg) || Node.isFunctionExpression(firstArg))) {
+        return firstArg;
+      }
+    }
+  }
+  return null;
 }
 
 function extractSharedActions(context, functionRegistry) {
@@ -394,9 +410,11 @@ function collectApiCallsFromNode(context, node, relPath, route, fallbackOwner = 
   const callExpressions = Node.isSourceFile(node)
     ? node.getDescendantsOfKind(SyntaxKind.CallExpression)
     : node.getDescendantsOfKind(SyntaxKind.CallExpression);
+  const importedCache = new Set();
 
   for (const call of callExpressions) {
-    const expressionText = call.getExpression().getText();
+    const expression = call.getExpression();
+    const expressionText = expression.getText();
 
     if (expressionText === "fetch") {
       const [urlArg, optionsArg] = call.getArguments();
@@ -433,10 +451,148 @@ function collectApiCallsFromNode(context, node, relPath, route, fallbackOwner = 
         enclosingFunction,
         confidence: endpointRaw.includes("${") ? 0.8 : 1,
       });
+      continue;
+    }
+
+    if (Node.isPropertyAccessExpression(expression)) {
+      const methodName = expression.getName();
+      if (["get", "post", "put", "patch", "delete"].includes(methodName)) {
+        const [urlArg] = call.getArguments();
+        if (!urlArg) continue;
+        const endpointRaw = urlArg.getText();
+        if (!looksLikeApiEndpoint(endpointRaw)) continue;
+        const enclosingFunction = enclosingFunctionName(call) || fallbackOwner || "module";
+        apiCalls.push({
+          id: `api:${relPath}:${call.getStartLineNumber()}:${methodName.toUpperCase()}`,
+          method: methodName.toUpperCase(),
+          endpoint: normalizeEndpoint(endpointRaw),
+          sourceFile: relPath,
+          line: call.getStartLineNumber(),
+          route,
+          enclosingFunction,
+          confidence: endpointRaw.includes("${") ? 0.8 : 1,
+        });
+        continue;
+      }
+
+      if (methodName === "request") {
+        const [configArg] = call.getArguments();
+        if (!configArg || !Node.isObjectLiteralExpression(configArg)) continue;
+        const requestConfig = extractRequestConfig(configArg);
+        if (!requestConfig.url || !looksLikeApiEndpoint(requestConfig.url)) continue;
+        const enclosingFunction = enclosingFunctionName(call) || fallbackOwner || "module";
+        apiCalls.push({
+          id: `api:${relPath}:${call.getStartLineNumber()}:${requestConfig.method}`,
+          method: requestConfig.method,
+          endpoint: normalizeEndpoint(requestConfig.url),
+          sourceFile: relPath,
+          line: call.getStartLineNumber(),
+          route,
+          enclosingFunction,
+          confidence: requestConfig.url.includes("${") ? 0.8 : 1,
+        });
+      }
+    }
+
+    const importedFunction = resolveImportedFunctionNode(context, expression);
+    if (!importedFunction) continue;
+
+    const cacheKey = `${importedFunction.relPath}:${importedFunction.name}:${call.getStartLineNumber()}`;
+    if (importedCache.has(cacheKey)) continue;
+    importedCache.add(cacheKey);
+
+    const importedBody = getFunctionBodyNode(importedFunction.node) || importedFunction.node;
+    const importedCalls = collectApiCallsFromNode(context, importedBody, importedFunction.relPath, route, fallbackOwner || expressionText);
+    for (const apiCall of importedCalls) {
+      apiCalls.push({
+        ...apiCall,
+        id: `api:${relPath}:${call.getStartLineNumber()}:${apiCall.method}:${apiCall.endpoint}`,
+        sourceFile: relPath,
+        line: call.getStartLineNumber(),
+        route,
+        enclosingFunction: enclosingFunctionName(call) || fallbackOwner || "module",
+        confidence: Math.min(apiCall.confidence || 1, 0.9),
+      });
     }
   }
 
   return apiCalls;
+}
+
+function looksLikeApiEndpoint(value) {
+  const normalized = stripQuotes(value || "");
+  return normalized.startsWith("/api") || normalized.startsWith("http://") || normalized.startsWith("https://");
+}
+
+function extractRequestConfig(objectLiteral) {
+  let method = "GET";
+  let url = null;
+  for (const prop of objectLiteral.getProperties()) {
+    if (!Node.isPropertyAssignment(prop)) continue;
+    const name = prop.getName();
+    const initializer = prop.getInitializer();
+    if (!initializer) continue;
+    if (name === "method") {
+      method = stripQuotes(initializer.getText()).toUpperCase();
+    } else if (name === "url") {
+      url = initializer.getText();
+    }
+  }
+  return { method, url };
+}
+
+function resolveImportedFunctionNode(context, expression) {
+  if (!Node.isIdentifier(expression)) return null;
+
+  let definitionNode;
+  try {
+    definitionNode = expression.getDefinitions?.()[0]?.getDeclarationNode?.();
+  } catch {
+    return null;
+  }
+
+  if (!definitionNode) return null;
+
+  const importDecl = definitionNode.getFirstAncestorByKind(SyntaxKind.ImportDeclaration);
+  if (!importDecl) return null;
+
+  const importedSource = importDecl.getModuleSpecifierSourceFile();
+  if (!importedSource) return null;
+
+  const importedRelPath = relativeSourcePath(context, importedSource);
+  if (!/(^|\/)api\//.test(importedRelPath)) return null;
+
+  const exportedName = Node.isImportSpecifier(definitionNode)
+    ? definitionNode.getNameNode().getText()
+    : "default";
+  const fnNode = findExportedFunctionNode(importedSource, exportedName);
+  if (!fnNode) return null;
+
+  return {
+    node: fnNode,
+    relPath: importedRelPath,
+    name: exportedName,
+  };
+}
+
+function findExportedFunctionNode(sourceFile, exportedName) {
+  if (exportedName === "default") {
+    const defaultFn = sourceFile.getFunctions().find((fn) => fn.isDefaultExport());
+    if (defaultFn) return defaultFn;
+  }
+
+  for (const fn of sourceFile.getFunctions()) {
+    if (fn.getName() === exportedName) return fn;
+  }
+
+  for (const declaration of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+    if (declaration.getName() !== exportedName) continue;
+    const initializer = declaration.getInitializer();
+    const functionNode = unwrapFunctionInitializer(initializer);
+    if (functionNode) return functionNode;
+  }
+
+  return null;
 }
 
 function extractNavigation(context, prescan, routeInfo) {
@@ -907,13 +1063,30 @@ function routeComponentIdentifier(elementAttr) {
   if (!initializer || !Node.isJsxExpression(initializer)) return null;
   const expression = initializer.getExpression();
   if (!expression) return null;
+  const candidates = [];
+
   if (Node.isJsxSelfClosingElement(expression) || Node.isJsxOpeningElement(expression)) {
-    return expression.getTagNameNode().getText();
+    candidates.push(expression.getTagNameNode().getText());
   }
   if (Node.isJsxElement(expression)) {
-    return expression.getOpeningElement().getTagNameNode().getText();
+    candidates.push(expression.getOpeningElement().getTagNameNode().getText());
   }
-  return null;
+
+  if (Node.isNode(expression)) {
+    for (const jsx of expression.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement)) {
+      candidates.push(jsx.getTagNameNode().getText());
+    }
+    for (const jsx of expression.getDescendantsOfKind(SyntaxKind.JsxOpeningElement)) {
+      candidates.push(jsx.getTagNameNode().getText());
+    }
+  }
+
+  const wrappers = new Set(["ProtectedRoute", "AppShell", "Suspense", "Fragment"]);
+  const component = [...candidates]
+    .reverse()
+    .find((name) => /^[A-Z]/.test(name) && !wrappers.has(name));
+
+  return component || null;
 }
 
 function resolveImportedComponentFile(context, sourceFile, componentName) {

@@ -19,6 +19,9 @@ function renderText(result) {
   const groups = groupBehaviors(result.behaviors);
   const apiSurface = uniqueApis(result.apiCalls);
   const routeList = [...result.routes].sort((a, b) => a.path.localeCompare(b.path));
+  const groupedEntries = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  const flowHighlights = selectFlowHighlights(result.flows);
+  const dataFlowHighlights = [...result.dataFlows].sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
   const lines = [];
   lines.push("PROJECT SUMMARY");
@@ -66,13 +69,14 @@ function renderText(result) {
 
   lines.push("FEATURE BEHAVIORS");
   lines.push("");
-  for (const group of [...groups.keys()].sort()) {
-    const behaviors = groups.get(group);
+  for (const [group, behaviors] of groupedEntries) {
+    const routes = [...new Set(behaviors.map((behavior) => behavior.route).filter(Boolean))].sort();
     lines.push(group.toUpperCase());
     lines.push("");
     lines.push(`Behaviors in group: ${behaviors.length}`);
+    if (routes.length > 0) lines.push(`Routes: ${routes.join(", ")}`);
     lines.push("");
-    for (const behavior of behaviors.slice(0, 20)) {
+    for (const behavior of behaviors.slice(0, 16)) {
       lines.push(behavior.title);
       lines.push(`-> Trigger: ${behavior.trigger}`);
       for (const step of behavior.internalSteps) {
@@ -85,15 +89,15 @@ function renderText(result) {
       lines.push(`-> Confidence: ${behavior.confidence}`);
       lines.push("");
     }
-    if (behaviors.length > 20) {
-      lines.push(`... ${behaviors.length - 20} more behaviors in ${group}`);
+    if (behaviors.length > 16) {
+      lines.push(`... ${behaviors.length - 16} more behaviors in ${group}`);
       lines.push("");
     }
   }
 
   lines.push("FLOW HIGHLIGHTS");
   lines.push("");
-  for (const flow of result.flows.slice(0, 80)) {
+  for (const flow of flowHighlights.slice(0, 40)) {
     lines.push(flow.name);
     lines.push(`-> Route: ${flow.route || "n/a"}`);
     for (const step of flow.steps) {
@@ -103,14 +107,14 @@ function renderText(result) {
     lines.push(`-> Confidence: ${flow.confidence}`);
     lines.push("");
   }
-  if (result.flows.length > 80) {
-    lines.push(`... ${result.flows.length - 80} more flows`);
+  if (flowHighlights.length > 40) {
+    lines.push(`... ${flowHighlights.length - 40} more flows`);
     lines.push("");
   }
 
   lines.push("DATA FLOWS");
   lines.push("");
-  for (const flow of result.dataFlows.slice(0, 80)) {
+  for (const flow of dataFlowHighlights.slice(0, 40)) {
     lines.push(flow.name);
     lines.push(`-> Source: ${flow.source}`);
     for (const step of flow.steps) {
@@ -120,8 +124,8 @@ function renderText(result) {
     lines.push(`-> Confidence: ${flow.confidence}`);
     lines.push("");
   }
-  if (result.dataFlows.length > 80) {
-    lines.push(`... ${result.dataFlows.length - 80} more data flows`);
+  if (dataFlowHighlights.length > 40) {
+    lines.push(`... ${dataFlowHighlights.length - 40} more data flows`);
     lines.push("");
   }
 
@@ -165,6 +169,12 @@ function buildSummary(result) {
     })),
     apiSurface: uniqueApis(result.apiCalls).slice(0, 50),
     featureGroups,
+    flowHighlights: selectFlowHighlights(result.flows).slice(0, 20).map((flow) => ({
+      name: flow.name,
+      route: flow.route,
+      outcome: flow.outcome,
+      confidence: flow.confidence,
+    })),
   };
 }
 
@@ -178,12 +188,41 @@ function groupBehaviors(behaviors) {
     groups.set(
       name,
       [...list].sort((a, b) => {
+        if ((b.priority || 0) !== (a.priority || 0)) return (b.priority || 0) - (a.priority || 0);
         if ((b.confidence || 0) !== (a.confidence || 0)) return (b.confidence || 0) - (a.confidence || 0);
         return (a.title || "").localeCompare(b.title || "");
       })
     );
   }
   return groups;
+}
+
+function selectFlowHighlights(flows) {
+  return [...flows]
+    .filter((flow) => {
+      const joinedSteps = (flow.steps || []).join(" ").toLowerCase();
+      const hasMeaningfulOutcome = flow.outcome && !/^Reaches /.test(flow.outcome);
+      const hasMeaningfulSteps = /api:|navigation:|state:/.test(joinedSteps) || (flow.steps || []).length > 1;
+      const labelLooksUseful = !/:\W+$/.test(flow.name || "") && !/\b(click|change|submit) (button|input|form)\b/i.test(flow.name || "");
+      return hasMeaningfulOutcome || (hasMeaningfulSteps && labelLooksUseful);
+    })
+    .sort((a, b) => {
+      const aScore = flowPriority(a);
+      const bScore = flowPriority(b);
+      if (bScore !== aScore) return bScore - aScore;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+}
+
+function flowPriority(flow) {
+  let score = 0;
+  if (flow.route) score += 2;
+  if ((flow.steps || []).some((step) => step.startsWith("api:"))) score += 5;
+  if ((flow.steps || []).some((step) => step.startsWith("navigation:"))) score += 4;
+  if ((flow.steps || []).some((step) => step.startsWith("state:"))) score += 2;
+  if (flow.outcome && !/^Reaches /.test(flow.outcome)) score += 3;
+  if ((flow.confidence || 0) >= 1) score += 1;
+  return score;
 }
 
 function uniqueApis(apiCalls) {
