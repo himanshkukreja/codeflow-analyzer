@@ -39,5 +39,13 @@
     "graphlib": "^2.1.8",
     "ts-morph": "^27.0.2",
     "typescript": "^6.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/himanshkukreja/codeflow-analyzer.git"
+  },
+  "homepage": "https://github.com/himanshkukreja/codeflow-analyzer#readme",
+  "bugs": {
+    "url": "https://github.com/himanshkukreja/codeflow-analyzer/issues"
   }
 }
