@@ -175,6 +175,63 @@ Useful sections:
 - `flows`
   - good for understanding interaction sequences built from connected signals
 
+## Example: Code To Behavior
+
+Here is a small example of how the analyzer turns static frontend code into user-understandable behavior.
+
+Input code:
+
+```jsx
+function LoginForm() {
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    await fetch('/api/auth/login', { method: 'POST' });
+    navigate('/dashboard');
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input placeholder="Email" />
+      <input placeholder="Password" type="password" />
+      <button type="submit">Log in</button>
+    </form>
+  );
+}
+```
+
+What the analyzer extracts as signals:
+
+```text
+event: submit login form
+state write: loading
+api call: POST /api/auth/login
+navigation: /dashboard
+```
+
+Example behavior output:
+
+```text
+AUTHENTICATION
+
+User can log in
+-> Trigger: Submit login form
+-> Internal: Updates loading state
+-> Internal: Calls POST /api/auth/login
+-> Internal: Navigates to /dashboard
+-> Outcome: UI can update from loading changes
+-> Outcome: Route changes to /dashboard
+```
+
+This is the core idea of the tool:
+- read static code
+- extract raw signals
+- connect those signals into a flow
+- render a behavior a human can quickly understand
+
 ## What The Tool Detects
 
 The analyzer currently focuses on deterministic static extraction.
