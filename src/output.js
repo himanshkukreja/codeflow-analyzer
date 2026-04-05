@@ -22,6 +22,7 @@ function renderText(result) {
   const groupedEntries = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
   const flowHighlights = selectFlowHighlights(result.flows);
   const dataFlowHighlights = [...result.dataFlows].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  const analysisNote = analysisNoteForResult(result);
 
   const lines = [];
   lines.push("PROJECT SUMMARY");
@@ -30,6 +31,7 @@ function renderText(result) {
   lines.push(`Framework: ${result.framework}`);
   lines.push(`Input path: ${result.inputPath}`);
   lines.push(`Output directory: ${result.outputDir}`);
+  lines.push(`Source files discovered: ${result.sourceFileCount || 0}`);
   lines.push(`Routes discovered: ${result.routes.length}`);
   lines.push(`States discovered: ${result.states.length}`);
   lines.push(`API calls discovered: ${result.apiCalls.length}`);
@@ -37,6 +39,10 @@ function renderText(result) {
   lines.push(`Behaviors discovered: ${result.behaviors.length}`);
   lines.push(`Data flows discovered: ${result.dataFlows.length}`);
   lines.push(`Flows discovered: ${result.flows.length}`);
+  if (analysisNote) {
+    lines.push("");
+    lines.push(`Note: ${analysisNote}`);
+  }
   lines.push("");
 
   lines.push("KEY ROUTES");
@@ -150,7 +156,9 @@ function buildSummary(result) {
 
   return {
     projectName: result.projectName,
+    analysisNote: analysisNoteForResult(result),
     counts: {
+      sourceFiles: result.sourceFileCount || 0,
       routes: result.routes.length,
       states: result.states.length,
       derivedState: result.derivedState.length,
@@ -176,6 +184,29 @@ function buildSummary(result) {
       confidence: flow.confidence,
     })),
   };
+}
+
+function analysisNoteForResult(result) {
+  if ((result.sourceFileCount || 0) === 0) {
+    return "No JavaScript or TypeScript source files were found in the input.";
+  }
+  const totalSignals =
+    result.routes.length +
+    result.states.length +
+    result.events.length +
+    result.apiCalls.length +
+    result.navigation.length +
+    result.conditionals.length;
+
+  if (totalSignals === 0 && result.framework === "unknown") {
+    return "The input does not appear to contain analyzable React or Next.js frontend code.";
+  }
+
+  if (totalSignals === 0) {
+    return "No analyzable frontend behavior signals were found in the input.";
+  }
+
+  return null;
 }
 
 function groupBehaviors(behaviors) {

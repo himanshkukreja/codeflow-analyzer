@@ -1,6 +1,6 @@
 {
   "name": "codeflow-analyzer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Production-grade CLI for extracting behaviors, routes, data flows, and interaction paths from React and Next.js codebases",
   "main": "src/cli.js",
   "bin": {

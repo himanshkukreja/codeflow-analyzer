@@ -50,6 +50,11 @@ Instead, it only reads:
 - symbol references
 - string literals and expressions that are statically visible
 
+Those source files may come from:
+- a local project directory
+- a local zip archive extracted to a temporary directory
+- a public GitHub repository archive downloaded to a temporary directory
+
 This makes the tool:
 - reproducible
 - explainable

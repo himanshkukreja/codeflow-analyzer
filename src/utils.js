@@ -101,10 +101,14 @@ function routeGroupName(route, titleHint) {
 
 function routeFromAppPath(relPath) {
   const normalized = toPosix(relPath);
-  if (!normalized.startsWith("app/")) return null;
-  if (!/\/page\.(tsx|ts|jsx|js)$/.test(normalized)) return null;
-  let route = normalized
+  const appMarker = "/app/";
+  const appIndex = normalized === "app" || normalized.startsWith("app/") ? 0 : normalized.indexOf(appMarker);
+  if (appIndex < 0) return null;
+  const appScoped = appIndex === 0 ? normalized : normalized.slice(appIndex + 1);
+  if (!/^app\/.+\/page\.(tsx|ts|jsx|js)$/.test(appScoped) && !/^app\/page\.(tsx|ts|jsx|js)$/.test(appScoped)) return null;
+  let route = appScoped
     .replace(/^app\//, "")
+    .replace(/^page\.(tsx|ts|jsx|js)$/, "")
     .replace(/\/page\.(tsx|ts|jsx|js)$/, "")
     .replace(/\(([^)]+)\)\//g, "")
     .replace(/\(([^)]+)\)/g, "")
@@ -116,15 +120,20 @@ function routeFromAppPath(relPath) {
 
 function routeFromPagesPath(relPath) {
   const normalized = toPosix(relPath);
-  if (!normalized.startsWith("pages/")) return null;
-  if (normalized.startsWith("pages/api/")) return null;
-  if (!/\.(tsx|ts|jsx|js)$/.test(normalized)) return null;
-  let route = normalized
+  const pagesMarker = "/pages/";
+  const pagesIndex = normalized === "pages" || normalized.startsWith("pages/") ? 0 : normalized.indexOf(pagesMarker);
+  if (pagesIndex < 0) return null;
+  const pagesScoped = pagesIndex === 0 ? normalized : normalized.slice(pagesIndex + 1);
+  if (pagesScoped.startsWith("pages/api/")) return null;
+  if (!/^pages\/.+\.(tsx|ts|jsx|js)$/.test(pagesScoped) && !/^pages\/index\.(tsx|ts|jsx|js)$/.test(pagesScoped)) return null;
+  let route = pagesScoped
     .replace(/^pages\//, "")
     .replace(/\.(tsx|ts|jsx|js)$/, "")
+    .replace(/^index$/, "")
     .replace(/\/index$/, "")
     .replace(/\/\[[^\]]+\]/g, "/:param")
     .replace(/\[[^\]]+\]/g, ":param");
+  if (/^_[^/]+$/.test(route)) return null;
   route = `/${route.replace(/^\/+/, "")}`;
   return route === "/" ? "/" : route.replace(/\/+/g, "/");
 }

@@ -17,7 +17,7 @@ async function runCli(argv) {
     return;
   }
 
-  const prepared = prepareInput(inputPath, { outputDir });
+  const prepared = await prepareInput(inputPath, { outputDir });
   try {
     const context = createProjectContext(prepared.analysisRoot, prepared.outputDir);
     const prescan = preScanProject(context);
@@ -28,9 +28,10 @@ async function runCli(argv) {
 
     const result = {
       projectName: prepared.projectName,
-      inputPath: prepared.analysisRoot,
+      inputPath: prepared.inputPath,
       outputDir: prepared.outputDir,
       framework: context.framework,
+      sourceFileCount: context.sourceFiles.length,
       routes: extracted.routes,
       states: extracted.states,
       derivedState: extracted.derivedState,
@@ -76,7 +77,7 @@ function printHelp() {
   console.log(`Codeflow Analyzer
 
 Usage:
-  codeflow-analyzer <path-to-project-or-zip> [--output <directory>]
+  codeflow-analyzer <path-to-project-or-zip-or-github-url> [--output <directory>]
 
 Options:
   -o, --output <directory>   Write output files to a custom directory
@@ -85,6 +86,9 @@ Options:
 
 Examples:
   codeflow-analyzer ./demo-app
+  codeflow-analyzer ./demo-app.zip
+  codeflow-analyzer https://github.com/owner/repo
+  codeflow-analyzer https://github.com/owner/repo/tree/main
   codeflow-analyzer ./demo-app --output ./reports
   npx codeflow-analyzer ./demo-app
 `);

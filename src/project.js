@@ -4,13 +4,25 @@ const { Project, ModuleKind, ScriptTarget, ts } = require("ts-morph");
 const { routeFromAppPath, routeFromPagesPath, toPosix, walkFiles } = require("./utils");
 
 function detectFramework(rootDir, sourceFiles) {
-  if (fs.existsSync(path.join(rootDir, "app")) || sourceFiles.some((file) => file.relPath.startsWith("app/"))) {
+  if (sourceFiles.length === 0) {
+    return "unknown";
+  }
+  if (
+    fs.existsSync(path.join(rootDir, "app")) ||
+    sourceFiles.some((file) => file.relPath.startsWith("app/") || file.appRoute)
+  ) {
     return "nextjs-app-router";
   }
-  if (fs.existsSync(path.join(rootDir, "pages")) || sourceFiles.some((file) => file.relPath.startsWith("pages/"))) {
+  if (
+    fs.existsSync(path.join(rootDir, "pages")) ||
+    sourceFiles.some((file) => file.relPath.startsWith("pages/") || file.pagesRoute)
+  ) {
     return "nextjs-pages-router";
   }
-  return "react";
+  const looksLikeReact = sourceFiles.some((file) =>
+    /from\s+['"]react['"]|from\s+['"]react-router-dom['"]|<[A-Z][A-Za-z0-9]*\b|useState\s*\(|useEffect\s*\(|onClick=|onSubmit=|onChange=/.test(file.content)
+  );
+  return looksLikeReact ? "react" : "unknown";
 }
 
 function findTsConfig(rootDir) {

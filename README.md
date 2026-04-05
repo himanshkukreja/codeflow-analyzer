@@ -60,7 +60,7 @@ npm run analyze -- /path/to/project
 Basic usage:
 
 ```bash
-codeflow-analyzer <path-to-project-or-zip>
+codeflow-analyzer <path-to-project-or-zip-or-github-url>
 ```
 
 Write outputs to a custom directory:
@@ -73,9 +73,48 @@ Examples:
 
 ```bash
 codeflow-analyzer ./demo-app
+codeflow-analyzer ./demo-app.zip
+codeflow-analyzer https://github.com/owner/repo
+codeflow-analyzer https://github.com/owner/repo/tree/main
 codeflow-analyzer ./demo-app --output ./analysis-output
 npx codeflow-analyzer ./demo-app
 ```
+
+Supported input types:
+
+- local project directory
+- local `.zip` archive of a project
+- public GitHub repository URL
+
+GitHub URL support currently works for public repositories such as:
+
+```bash
+codeflow-analyzer https://github.com/owner/repo
+codeflow-analyzer https://github.com/owner/repo/tree/main
+```
+
+For GitHub URLs, the CLI downloads a temporary archive, analyzes it locally, writes the output files, and then cleans up the temporary directory.
+
+## Try It With A Public Demo Repo
+
+If you do not have a local app ready, you can test the analyzer immediately with this public demo repo:
+
+```bash
+codeflow-analyzer https://github.com/himanshkukreja/qa-pilot-demo-app
+```
+
+If you run that from your current directory, the CLI will generate:
+
+```bash
+./qa-pilot-demo-app-behavior.txt
+./qa-pilot-demo-app-behavior.json
+```
+
+This is a good starter repo for understanding:
+- route detection
+- user-facing behaviors
+- state-driven interactions
+- flow and data-flow output structure
 
 ## Output Files
 
@@ -278,6 +317,7 @@ Current limitations:
 - custom component abstractions may need deeper prop-resolution to become fully human-readable
 - some flows are still structurally correct but not yet phrased in the best business language
 - Redux, React Query, and SWR modeling are not fully implemented yet
+- public GitHub URL input currently supports repository and branch URLs, not private repositories or full git hosting generalization
 
 ## Good Use Cases
 
